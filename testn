@@ -1,18 +1,284 @@
-import random
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glassmorphism Taschenrechner</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
 
-geheime_zahl = random.randint(1, 10)
-versuche = 0
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-print("Ich habe mir eine Zahl zwischen 1 und 10 gemerkt. Errate sie!")
+        .calculator {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            padding: 25px;
+            width: 100%;
+            max-width: 350px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
 
-while True:
-    eingabe = int(input("Dein Tipp: "))
-    versuche += 1
+        .display {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: right;
+            margin-bottom: 20px;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
 
-    if eingabe < geheime_zahl:
-        print("Zu klein!")
-    elif eingabe > geheime_zahl:
-        print("Zu groß!")
-    else:
-        print(f"Richtig! Du hast {versuche} Versuch(e) gebraucht.")
-        break
+        .previous-operand {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.95rem;
+            min-height: 1.2rem;
+            word-break: break-all;
+        }
+
+        .current-operand {
+            color: #ffffff;
+            font-size: 2.2rem;
+            font-weight: 600;
+            min-height: 2.6rem;
+            word-break: break-all;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        button {
+            border: none;
+            outline: none;
+            height: 60px;
+            border-radius: 14px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: none;
+        }
+
+        .btn-func {
+            background: rgba(255, 179, 0, 0.25);
+            color: #ffca28;
+        }
+
+        .btn-func:hover {
+            background: rgba(255, 179, 0, 0.4);
+        }
+
+        .btn-operator {
+            background: rgba(0, 229, 255, 0.25);
+            color: #00e5ff;
+        }
+
+        .btn-operator:hover {
+            background: rgba(0, 229, 255, 0.4);
+        }
+
+        .btn-equals {
+            background: linear-gradient(135deg, #00c853, #b2ff59);
+            color: #000;
+            font-weight: 700;
+            grid-column: span 2;
+        }
+
+        .btn-equals:hover {
+            background: linear-gradient(135deg, #00e676, #ccff90);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calculator">
+        <div class="display">
+            <div id="previous" class="previous-operand"></div>
+            <div id="current" class="current-operand">0</div>
+        </div>
+        <div class="buttons">
+            <button class="btn-func" onclick="clearAll()">AC</button>
+            <button class="btn-func" onclick="deleteDigit()">DEL</button>
+            <button class="btn-func" onclick="toggleSign()">+/-</button>
+            <button class="btn-operator" onclick="appendOperator('/')">÷</button>
+
+            <button onclick="appendNumber('7')">7</button>
+            <button onclick="appendNumber('8')">8</button>
+            <button onclick="appendNumber('9')">9</button>
+            <button class="btn-operator" onclick="appendOperator('*')">×</button>
+
+            <button onclick="appendNumber('4')">4</button>
+            <button onclick="appendNumber('5')">5</button>
+            <button onclick="appendNumber('6')">6</button>
+            <button class="btn-operator" onclick="appendOperator('-')">-</button>
+
+            <button onclick="appendNumber('1')">1</button>
+            <button onclick="appendNumber('2')">2</button>
+            <button onclick="appendNumber('3')">3</button>
+            <button class="btn-operator" onclick="appendOperator('+')">+</button>
+
+            <button onclick="appendNumber('0')">0</button>
+            <button onclick="appendNumber('.')">.</button>
+            <button class="btn-equals" onclick="calculate()">=</button>
+        </div>
+    </div>
+
+    <script>
+        let currentInput = '0';
+        let previousInput = '';
+        let operator = null;
+        let shouldResetScreen = false;
+
+        const currentDisplay = document.getElementById('current');
+        const previousDisplay = document.getElementById('previous');
+
+        function updateDisplay() {
+            currentDisplay.innerText = currentInput;
+            if (operator !== null) {
+                let opSymbol = operator === '*' ? '×' : operator === '/' ? '÷' : operator;
+                previousDisplay.innerText = `${previousInput} ${opSymbol}`;
+            } else {
+                previousDisplay.innerText = previousInput;
+            }
+        }
+
+        function appendNumber(number) {
+            if (currentInput === '0' || shouldResetScreen) {
+                if (number === '.') {
+                    currentInput = '0.';
+                } else {
+                    currentInput = number;
+                }
+                shouldResetScreen = false;
+            } else {
+                if (number === '.' && currentInput.includes('.')) return;
+                currentInput += number;
+            }
+            updateDisplay();
+        }
+
+        function appendOperator(op) {
+            if (operator !== null && !shouldResetScreen) {
+                calculate();
+            }
+            previousInput = currentInput;
+            operator = op;
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+
+        function calculate() {
+            if (operator === null || shouldResetScreen) return;
+            
+            let result;
+            const prev = parseFloat(previousInput);
+            const current = parseFloat(currentInput);
+
+            if (isNaN(prev) || isNaN(current)) return;
+
+            switch (operator) {
+                case '+':
+                    result = prev + current;
+                    break;
+                case '-':
+                    result = prev - current;
+                    break;
+                case '*':
+                    result = prev * current;
+                    break;
+                case '/':
+                    if (current === 0) {
+                        currentInput = 'Fehler';
+                        operator = null;
+                        previousInput = '';
+                        shouldResetScreen = true;
+                        updateDisplay();
+                        return;
+                    }
+                    result = prev / current;
+                    break;
+                default:
+                    return;
+            }
+
+            currentInput = Math.round(result * 100000000) / 100000000 + '';
+            operator = null;
+            previousInput = '';
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+
+        function clearAll() {
+            currentInput = '0';
+            previousInput = '';
+            operator = null;
+            shouldResetScreen = false;
+            updateDisplay();
+        }
+
+        function deleteDigit() {
+            if (shouldResetScreen) return;
+            if (currentInput.length === 1 || currentInput === 'Fehler') {
+                currentInput = '0';
+            } else {
+                currentInput = currentInput.slice(0, -1);
+            }
+            updateDisplay();
+        }
+
+        function toggleSign() {
+            if (currentInput === '0' || currentInput === 'Fehler') return;
+            currentInput = (parseFloat(currentInput) * -1).toString();
+            updateDisplay();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') appendNumber(e.key);
+            if (e.key === '.') appendNumber('.');
+            if (e.key === '+' || e.key === '-') appendOperator(e.key);
+            if (e.key === '*') appendOperator('*');
+            if (e.key === '/') appendOperator('/');
+            if (e.key === 'Enter' || e.key === '=') {
+                e.preventDefault();
+                calculate();
+            }
+            if (e.key === 'Backspace') deleteDigit();
+            if (e.key === 'Escape') clearAll();
+        });
+    </script>
+</body>
+</html>
